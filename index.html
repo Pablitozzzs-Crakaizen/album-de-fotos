@@ -232,32 +232,41 @@ async function getSpotifyToken() {
     try {
         const res = await fetch('https://accounts.spotify.com/api/token', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET) },
+            headers: { 
+                'Content-Type': 'application/x-www-form-urlencoded', 
+                'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET) 
+            },
             body: 'grant_type=client_credentials'
         });
         const data = await res.json();
         accessToken = data.access_token;
-    } catch (e) { console.error("Error Token:", e); }
+    } catch (e) { 
+        console.error("Error al obtener Token:", e); 
+    }
 }
-
+        
 async function searchSpotify() {
     const q = document.getElementById('musicInp').value;
     if (q.length < 3 || !accessToken) return;
-    const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
-        headers: { 'Authorization': 'Bearer ' + accessToken }
-    });
-    const data = await res.json();
-    let html = '';
-    data.tracks.items.forEach(t => {
-        html += `<div onclick="selectTrack('${t.id}', '${t.name.replace(/'/g, "")}')" style="padding:8px; border-bottom:1px solid #333; cursor:pointer; font-size:12px;">🎵 ${t.name} - ${t.artists[0].name}</div>`;
-    });
-    document.getElementById('musicResults').innerHTML = html;
-}
 
-function selectTrack(id, name) {
-    selectedTrackId = id;
-    document.getElementById('musicInp').value = name;
-    document.getElementById('musicResults').innerHTML = '';
+    try {
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
+            headers: { 'Authorization': 'Bearer ' + accessToken }
+        });
+        const data = await res.json();
+        let html = '';
+        if (data.tracks && data.tracks.items) {
+            data.tracks.items.forEach(t => {
+                // Limpiamos el nombre para evitar errores de comillas
+                const trackName = t.name.replace(/'/g, "");
+                const artistName = t.artists[0].name.replace(/'/g, "");
+                html += `<div onclick="selectTrack('${t.id}', '${trackName} - ${artistName}')" style="padding:8px; border-bottom:1px solid #333; cursor:pointer; font-size:12px; color:white;">🎵 ${trackName} - ${artistName}</div>`;
+            });
+        }
+        document.getElementById('musicResults').innerHTML = html;
+    } catch (e) {
+        console.error("Error en búsqueda:", e);
+    }
 }
 
 function openCreator() { document.getElementById('creator').style.display = 'flex'; }
@@ -335,11 +344,9 @@ function openRepo(id) {
     document.getElementById('repoTitle').innerText = n.title;
     document.getElementById('repoImages').innerHTML = n.allImages.map(img => `<img src="${img}">`).join('');
     
-    if(n.trackId) {
-        document.getElementById('repoSpotify').innerHTML = `<iframe src="https://open.spotify.com/embed/track/${n.trackId}" width="100%" height="80" frameBorder="0" allow="autoplay; encrypted-media"></iframe>`;
-    } else {
-        document.getElementById('repoSpotify').innerHTML = '';
-    }
+if(n.trackId) {
+    document.getElementById('repoSpotify').innerHTML = `<iframe src="https://open.spotify.com/embed/track/${n.trackId}" width="100%" height="80" frameBorder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
+}
 
     document.getElementById('deleteBtn').onclick = async () => {
         if(confirm("¿Seguro que quieres borrar este recuerdo?")) {
