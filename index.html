@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>LoveAlbumApp Premium 💗</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        :root { --primary: #ff3366; --secondary: #ff85a2; --bg-dark: #000; }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Poppins', sans-serif; background: var(--bg-dark);
+            color: white; min-height: 100vh; overflow-x: hidden;
+        }
+
+        .background-fixed {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('fondo1.png') center/cover no-repeat;
+            z-index: -2;
+        }
+
+        .stars-overlay {
+            position: fixed; inset: 0;
+            background: radial-gradient(circle, rgba(255,51,102,0.15) 0%, transparent 60%);
+            animation: pulseNebula 10s ease-in-out infinite; z-index: -1;
+        }
+        @keyframes pulseNebula { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+        header { text-align: center; padding: 60px 20px 20px; position: relative; z-index: 10; }
+        header h1 { font-family: 'Dancing Script', cursive; font-size: 3.5rem; text-shadow: 0 0 20px rgba(255, 51, 102, 0.8); }
+
+        .timeline-path {
+            position: relative; padding: 40px 0 150px;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 600px;
+        }
+
+        .svg-path {
+            position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 100%; z-index: 0; stroke-dasharray: 8;
+            animation: dash 5s linear infinite; opacity: 0.6;
+        }
+        @keyframes dash { to { stroke-dashoffset: -16; } }
+
+        .moment-card {
+            position: relative; width: 160px; height: 160px;
+            background-size: cover; background-position: center;
+            border: 4px solid white; margin-bottom: 100px; z-index: 2;
+            cursor: pointer; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.3);
+        }
+        .moment-card:active { transform: scale(1.1); }
+
+        .shape-circle { border-radius: 50%; }
+        .shape-polaroid { border-radius: 4px; border-bottom: 40px solid white; height: 200px; }
+
+        .moment-card:nth-child(even) { align-self: flex-start; margin-left: 10%; }
+        .moment-card:nth-child(odd) { align-self: flex-end; margin-right: 10%; }
+
+        .moment-label {
+            position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%);
+            background: var(--primary); padding: 4px 15px; border-radius: 20px;
+            font-family: 'Dancing Script'; font-size: 1.1rem; white-space: nowrap;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        /* DOCK */
+        .dock {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            width: 80%; height: 65px; background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 35px; display: flex; justify-content: space-around;
+            align-items: center; z-index: 1000;
+        }
+        .dock-btn { font-size: 22px; color: white; background: none; border: none; cursor: pointer; }
+        .dock-btn.main { background: var(--primary); width: 60px; height: 60px; border-radius: 50%; transform: translateY(-20px); }
+
+        /* MODALES */
+        .overlay, .repo-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 2000;
+            display: none; align-items: center; justify-content: center; padding: 20px;
+        }
+        
+        .repo-overlay { animation: zoomIn 0.4s ease; }
+
+        .form-card {
+            background: #111; padding: 20px; border-radius: 30px; border: 1px solid var(--primary);
+            width: 100%; max-width: 380px; text-align: center;
+        }
+
+        .input-dark {
+            width: 100%; background: #222; border: 1px solid #333; color: white;
+            padding: 10px; border-radius: 10px; margin-top: 10px; outline: none;
+        }
+
+        .btn-photo {
+            display: block; width: 100%; background: var(--primary); color: white;
+            padding: 12px; border-radius: 10px; font-weight: 600; border: none; cursor: pointer; margin-top: 10px;
+        }
+        .btn-delete {
+            background: #ff0044; color: white; padding: 8px 20px; border-radius: 20px; 
+            border: none; margin-top: 20px; font-weight: bold; cursor: pointer;
+        }
+
+        .repo-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+            width: 100%; max-width: 450px; margin-top: 15px; padding: 10px;
+        }
+        .repo-grid img { width: 100%; border-radius: 8px; border: 2px solid white; }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="background-fixed"></div>
+    <div class="stars-overlay"></div>
+
+    <div id="full-capture">
+        <header>
+            <h1>Elmer & Brithany</h1>
+            <p style="letter-spacing: 3px; font-size: 0.7rem; opacity: 0.8;">NUESTRA HISTORIA JUNTOS 💗✨</p>
+        </header>
+
+        <div class="timeline-path">
+            <svg class="svg-path" id="svgPath" viewBox="0 0 100 1000" preserveAspectRatio="none">
+                <path d="M50,0 Q80,100 20,200 T50,400 T80,600 T50,800 T20,1000" fill="none" stroke="#ff85a2" stroke-width="3" />
+            </svg>
+            <div id="nodesContainer" style="width: 100%; display: flex; flex-direction: column;"></div>
+        </div>
+    </div>
+
+    <nav class="dock">
+        <button class="dock-btn" onclick="location.reload()">🏠</button>
+        <button class="dock-btn main" onclick="openCreator()">+</button>
+        <button class="dock-btn" onclick="exportPDF()">📥</button>
+    </nav>
+
+    <div class="overlay" id="creator">
+        <div class="form-card">
+            <h2 style="font-family:'Dancing Script'; font-size: 2rem; color: #fff;">Nuevo Momento</h2>
+            <label class="btn-photo">
+                📸 SELECCIONAR FOTOS
+                <input type="file" id="fInp" hidden multiple accept="image/*">
+            </label>
+            <input type="text" id="tInp" class="input-dark" placeholder="¿Qué pasó hoy?">
+            <select id="sInp" class="input-dark">
+                <option value="shape-polaroid">Estilo Polaroid</option>
+                <option value="shape-circle">Estilo Círculo</option>
+            </select>
+            <input type="text" id="musicInp" class="input-dark" placeholder="🔍 Buscar canción en Spotify..." onkeyup="searchSpotify()">
+            <div id="musicResults" style="max-height: 120px; overflow-y: auto; margin-top: 5px; background: #000; border-radius: 10px;"></div>
+            
+            <button onclick="saveMoment()" class="btn-photo" style="background:white; color:black;">GUARDAR</button>
+            <button onclick="closeCreator()" style="background:none; border:none; color:gray; margin-top:10px; cursor:pointer;">Cancelar</button>
+        </div>
+    </div>
+
+    <div class="repo-overlay" id="repoView" style="display:none; flex-direction:column; overflow-y:auto;">
+        <h2 id="repoTitle" style="font-family:'Dancing Script'; font-size: 2.5rem; text-align: center;"></h2>
+        <div id="repoImages" class="repo-grid"></div>
+        <div id="repoSpotify" style="margin-top:20px; width:100%; max-width:350px;"></div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button onclick="document.getElementById('repoView').style.display='none'" class="btn-photo" style="width:120px;">Volver</button>
+            <button id="deleteBtn" class="btn-delete">🗑️ Borrar</button>
+        </div>
+    </div>
+
+    <script>
+const CLIENT_ID = 'fb6cce3e9c9a4bbc8a594a6b1de6a2b2';
+const CLIENT_SECRET = '2b032efa073c41089e68a159a2cc30b4';
+let accessToken = '';
+let selectedTrackId = '';
+let db = [];
+
+// --- CONFIGURACIÓN DE INDEXEDDB (El almacén gigante) ---
+const dbName = "LoveAlbumDB";
+const storeName = "momentos";
+
+function openDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, 1);
+        request.onupgradeneeded = () => request.result.createObjectStore(storeName, { keyPath: "id", autoIncrement: true });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject("Error abriendo DB");
+    });
+}
+
+async function loadFromDB() {
+    const idb = await openDB();
+    const tx = idb.transaction(storeName, "readonly");
+    const store = tx.objectStore(storeName);
+    return new Promise(res => {
+        const req = store.getAll();
+        req.onsuccess = () => { db = req.result; res(); };
+    });
+}
+
+async function saveToDB(node) {
+    const idb = await openDB();
+    const tx = idb.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    store.add(node);
+    return tx.complete;
+}
+
+async function deleteFromDB(id) {
+    const idb = await openDB();
+    const tx = idb.transaction(storeName, "readwrite");
+    const store = tx.objectStore(storeName);
+    store.delete(id);
+}
+
+// --- LÓGICA DE LA APP ---
+window.onload = async () => { 
+    await loadFromDB();
+    renderAll();
+    getSpotifyToken();
+};
+
+async function getSpotifyToken() {
+    try {
+        const res = await fetch('https://accounts.spotify.com/api/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET) },
+            body: 'grant_type=client_credentials'
+        });
+        const data = await res.json();
+        accessToken = data.access_token;
+    } catch (e) { console.error("Error Token:", e); }
+}
+
+async function searchSpotify() {
+    const q = document.getElementById('musicInp').value;
+    if (q.length < 3 || !accessToken) return;
+    const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
+        headers: { 'Authorization': 'Bearer ' + accessToken }
+    });
+    const data = await res.json();
+    let html = '';
+    data.tracks.items.forEach(t => {
+        html += `<div onclick="selectTrack('${t.id}', '${t.name.replace(/'/g, "")}')" style="padding:8px; border-bottom:1px solid #333; cursor:pointer; font-size:12px;">🎵 ${t.name} - ${t.artists[0].name}</div>`;
+    });
+    document.getElementById('musicResults').innerHTML = html;
+}
+
+function selectTrack(id, name) {
+    selectedTrackId = id;
+    document.getElementById('musicInp').value = name;
+    document.getElementById('musicResults').innerHTML = '';
+}
+
+function openCreator() { document.getElementById('creator').style.display = 'flex'; }
+function closeCreator() { document.getElementById('creator').style.display = 'none'; }
+
+function compressImage(base64Str, maxWidth = 800) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const scale = maxWidth / img.width;
+            canvas.width = maxWidth;
+            canvas.height = img.height * scale;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL('image/jpeg', 0.7));
+        };
+    });
+}
+
+async function saveMoment() {
+    const files = document.getElementById('fInp').files;
+    const title = document.getElementById('tInp').value;
+    if(!files.length || !title) return alert("¡Sube fotos y pon un título!");
+
+    const rawReaders = Array.from(files).map(f => new Promise(res => {
+        const r = new FileReader(); 
+        r.onload = e => res(e.target.result); 
+        r.readAsDataURL(f);
+    }));
+
+    const rawImgs = await Promise.all(rawReaders);
+    const compressedImgs = await Promise.all(rawImgs.map(img => compressImage(img)));
+
+// Busca esta parte y reemplázala:
+const node = {
+    cover: compressedImgs[0],
+    allImages: compressedImgs,
+    title: title,
+    shape: document.getElementById('sInp').value,
+    trackId: selectedTrackId,
+    // CAMBIA ESTA LÍNEA DE ABAJO:
+    date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+};
+
+    await saveToDB(node);
+    await loadFromDB();
+    renderAll();
+    closeCreator();
+    confetti();
+    document.getElementById('tInp').value = '';
+    document.getElementById('musicInp').value = '';
+    selectedTrackId = '';
+}
+
+function renderAll() {
+    const container = document.getElementById('nodesContainer');
+    container.innerHTML = '';
+    db.forEach((n) => {
+        const div = document.createElement('div');
+        div.className = `moment-card ${n.shape} animate__animated animate__fadeInUp`;
+        div.style.backgroundImage = `url(${n.cover})`;
+        div.onclick = () => openRepo(n.id);
+        div.innerHTML = `<div class="moment-label"><span style="font-size:8px; opacity:0.8; display:block;">${n.date}</span>${n.title}</div>`;
+        container.appendChild(div);
+    });
+    const svgHeight = Math.max(1000, db.length * 250);
+    document.getElementById('svgPath').setAttribute('viewBox', `0 0 100 ${svgHeight}`);
+}
+
+function openRepo(id) {
+    const n = db.find(item => item.id === id);
+    const view = document.getElementById('repoView');
+    document.getElementById('repoTitle').innerText = n.title;
+    document.getElementById('repoImages').innerHTML = n.allImages.map(img => `<img src="${img}">`).join('');
+    
+    if(n.trackId) {
+        document.getElementById('repoSpotify').innerHTML = `<iframe src="https://open.spotify.com/embed/track/${n.trackId}" width="100%" height="80" frameBorder="0" allow="autoplay; encrypted-media"></iframe>`;
+    } else {
+        document.getElementById('repoSpotify').innerHTML = '';
+    }
+
+    document.getElementById('deleteBtn').onclick = async () => {
+        if(confirm("¿Seguro que quieres borrar este recuerdo?")) {
+            await deleteFromDB(id);
+            await loadFromDB();
+            view.style.display = 'none';
+            renderAll();
+        }
+    };
+    view.style.display = 'flex';
+}
+
+function exportPDF() {
+    const element = document.getElementById('full-capture');
+    html2pdf().from(element).set({
+        margin: 0, filename: 'NuestraHistoria.pdf',
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    }).save();
+}
+    </script>
+</body>
+</html>
