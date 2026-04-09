@@ -176,14 +176,14 @@
         </div>
     </div>
 
-    <script>
+<script>
 const CLIENT_ID = 'fb6cce3e9c9a4bbc8a594a6b1de6a2b2';
 const CLIENT_SECRET = '2b032efa073c41089e68a159a2cc30b4';
 let accessToken = '';
 let selectedTrackId = '';
 let db = [];
 
-// --- CONFIGURACIÓN DE INDEXEDDB (El almacén gigante) ---
+// --- CONFIGURACIÓN DE INDEXEDDB ---
 const dbName = "LoveAlbumDB";
 const storeName = "momentos";
 
@@ -221,7 +221,7 @@ async function deleteFromDB(id) {
     store.delete(id);
 }
 
-// --- LÓGICA DE LA APP ---
+// --- LÓGICA DE SPOTIFY (CORREGIDA PARA EVITAR CORS) ---
 window.onload = async () => { 
     await loadFromDB();
     renderAll();
@@ -230,8 +230,8 @@ window.onload = async () => {
 
 async function getSpotifyToken() {
     try {
-        // Usamos un proxy alternativo o intentamos la petición directa
-        const res = await fetch('https://cors-proxy.htmldriven.com/?url=https://accounts.spotify.com/api/token', {
+        // Usamos un proxy que no requiere activación manual para obtener el token
+        const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://accounts.spotify.com/api/token'), {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -239,14 +239,11 @@ async function getSpotifyToken() {
             },
             body: 'grant_type=client_credentials'
         });
-        
-        // Si el proxy anterior falla, el que ya activaste (CORS Anywhere) funcionará
-        // mientras tengas la sesión activa.
         const data = await res.json();
         accessToken = data.access_token;
-        console.log("Token obtenido con éxito");
+        console.log("Conectado a Spotify 🎵");
     } catch (e) { 
-        console.error("Error al obtener Token:", e); 
+        console.error("Error de conexión:", e); 
     }
 }
         
@@ -255,17 +252,20 @@ async function searchSpotify() {
     if (q.length < 3 || !accessToken) return;
 
     try {
-        const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
+        const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=5`), {
             headers: { 'Authorization': 'Bearer ' + accessToken }
         });
         const data = await res.json();
         let html = '';
         if (data.tracks && data.tracks.items) {
             data.tracks.items.forEach(t => {
-                // Limpiamos el nombre para evitar errores de comillas
                 const trackName = t.name.replace(/'/g, "");
                 const artistName = t.artists[0].name.replace(/'/g, "");
-                html += `<div onclick="selectTrack('${t.id}', '${trackName} - ${artistName}')" style="padding:8px; border-bottom:1px solid #333; cursor:pointer; font-size:12px; color:white;">🎵 ${trackName} - ${artistName}</div>`;
+                html += `<div onclick="selectTrack('${t.id}', '${trackName} - ${artistName}')" 
+                             style="padding:10px; border-bottom:1px solid #333; cursor:pointer; font-size:13px; color:white;">
+                             <img src="${t.album.images[2].url}" style="width:20px; vertical-align:middle; margin-right:10px;">
+                             ${trackName} - ${artistName}
+                         </div>`;
             });
         }
         document.getElementById('musicResults').innerHTML = html;
@@ -274,6 +274,13 @@ async function searchSpotify() {
     }
 }
 
+function selectTrack(id, fullName) {
+    selectedTrackId = id;
+    document.getElementById('musicInp').value = fullName;
+    document.getElementById('musicResults').innerHTML = '';
+}
+
+// --- RESTO DE FUNCIONES (SIN CAMBIOS) ---
 function openCreator() { document.getElementById('creator').style.display = 'flex'; }
 function closeCreator() { document.getElementById('creator').style.display = 'none'; }
 
@@ -307,16 +314,14 @@ async function saveMoment() {
     const rawImgs = await Promise.all(rawReaders);
     const compressedImgs = await Promise.all(rawImgs.map(img => compressImage(img)));
 
-// Busca esta parte y reemplázala:
-const node = {
-    cover: compressedImgs[0],
-    allImages: compressedImgs,
-    title: title,
-    shape: document.getElementById('sInp').value,
-    trackId: selectedTrackId,
-    // CAMBIA ESTA LÍNEA DE ABAJO:
-    date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
-};
+    const node = {
+        cover: compressedImgs[0],
+        allImages: compressedImgs,
+        title: title,
+        shape: document.getElementById('sInp').value,
+        trackId: selectedTrackId,
+        date: new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+    };
 
     await saveToDB(node);
     await loadFromDB();
@@ -349,9 +354,11 @@ function openRepo(id) {
     document.getElementById('repoTitle').innerText = n.title;
     document.getElementById('repoImages').innerHTML = n.allImages.map(img => `<img src="${img}">`).join('');
     
-if(n.trackId) {
-    document.getElementById('repoSpotify').innerHTML = `<iframe src="https://open.spotify.com/embed/track/${n.trackId}" width="100%" height="80" frameBorder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
-}
+    if(n.trackId) {
+        document.getElementById('repoSpotify').innerHTML = `<iframe src="https://open.spotify.com/embed/track/${n.trackId}" width="100%" height="80" frameBorder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
+    } else {
+        document.getElementById('repoSpotify').innerHTML = '';
+    }
 
     document.getElementById('deleteBtn').onclick = async () => {
         if(confirm("¿Seguro que quieres borrar este recuerdo?")) {
@@ -372,6 +379,7 @@ function exportPDF() {
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     }).save();
 }
+</script>
     </script>
 </body>
 </html>
