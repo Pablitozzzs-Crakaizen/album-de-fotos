@@ -178,14 +178,78 @@
 
 <script>
 const CLIENT_ID = 'fb6cce3e9c9a4bbc8a594a6b1de6a2b2';
-const CLIENT_SECRET = '2b032efa073c41089e68a159a2cc30b4';
-let accessToken = '';
+// Ya no necesitamos el SECRET aquí (es más seguro)
+const REDIRECT_URI = window.location.origin + window.location.pathname;
+let accessToken = new URLSearchParams(window.location.hash.substring(1)).get('access_token');
 let selectedTrackId = '';
 let db = [];
 
-// --- CONFIGURACIÓN DE INDEXEDDB ---
 const dbName = "LoveAlbumDB";
 const storeName = "momentos";
+
+// --- INICIO: LÓGICA DE SPOTIFY PROFESIONAL ---
+window.onload = async () => { 
+    await loadFromDB();
+    renderAll();
+    
+    // Si hay un token en la URL, lo guardamos y limpiamos la URL
+    if (accessToken) {
+        console.log("Spotify conectado correctamente");
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+};
+
+function loginSpotify() {
+    const url = `https://api.spotify.com/v1/search?q=aquell%20&type=track&limit=56?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=user-read-private`;
+    window.location.href = url;
+}
+
+async function searchSpotify() {
+    const q = document.getElementById('musicInp').value;
+    
+    if (!accessToken) {
+        if (q.length > 1) {
+            document.getElementById('musicResults').innerHTML = 
+                `<div onclick="loginSpotify()" style="padding:10px; color:#ff3366; cursor:pointer; font-weight:bold;">
+                    ⚠️ Haz clic aquí para conectar Spotify y buscar
+                </div>`;
+        }
+        return;
+    }
+
+    if (q.length < 3) return;
+
+    try {
+        const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
+            headers: { 'Authorization': 'Bearer ' + accessToken }
+        });
+        const data = await res.json();
+        
+        // Si el token expiró (da error 401), re-loguear
+        if (data.error && data.error.status === 401) return loginSpotify();
+
+        let html = '';
+        if (data.tracks && data.tracks.items) {
+            data.tracks.items.forEach(t => {
+                const trackName = t.name.replace(/'/g, "");
+                const artistName = t.artists[0].name.replace(/'/g, "");
+                html += `<div onclick="selectTrack('${t.id}', '${trackName} - ${artistName}')" 
+                             style="padding:10px; border-bottom:1px solid #333; cursor:pointer; font-size:13px; color:white;">
+                             <img src="${t.album.images[2].url}" style="width:20px; vertical-align:middle; margin-right:10px;">
+                             ${trackName} - ${artistName}
+                         </div>`;
+            });
+        }
+        document.getElementById('musicResults').innerHTML = html;
+    } catch (e) { console.error(e); }
+}
+
+function selectTrack(id, fullName) {
+    selectedTrackId = id;
+    document.getElementById('musicInp').value = fullName;
+    document.getElementById('musicResults').innerHTML = '';
+}
+// --- FIN: LÓGICA DE SPOTIFY ---
 
 function openDB() {
     return new Promise((resolve, reject) => {
@@ -221,66 +285,6 @@ async function deleteFromDB(id) {
     store.delete(id);
 }
 
-// --- LÓGICA DE SPOTIFY (CORREGIDA PARA EVITAR CORS) ---
-window.onload = async () => { 
-    await loadFromDB();
-    renderAll();
-    getSpotifyToken();
-};
-
-async function getSpotifyToken() {
-    try {
-        // Usamos un proxy que no requiere activación manual para obtener el token
-        const res = await fetch('https://corsproxy.io/?' + encodeURIComponent('https://accounts.spotify.com/api/token'), {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET)
-            },
-            body: 'grant_type=client_credentials'
-        });
-        const data = await res.json();
-        accessToken = data.access_token;
-        console.log("Conectado a Spotify 🎵");
-    } catch (e) { 
-        console.error("Error de conexión:", e); 
-    }
-}
-        
-async function searchSpotify() {
-    const q = document.getElementById('musicInp').value;
-    if (q.length < 3 || !accessToken) return;
-
-    try {
-        const res = await fetch('https://corsproxy.io/?' + encodeURIComponent(`https://api.spotify.com/v1/search?q=${q}&type=track&limit=5`), {
-            headers: { 'Authorization': 'Bearer ' + accessToken }
-        });
-        const data = await res.json();
-        let html = '';
-        if (data.tracks && data.tracks.items) {
-            data.tracks.items.forEach(t => {
-                const trackName = t.name.replace(/'/g, "");
-                const artistName = t.artists[0].name.replace(/'/g, "");
-                html += `<div onclick="selectTrack('${t.id}', '${trackName} - ${artistName}')" 
-                             style="padding:10px; border-bottom:1px solid #333; cursor:pointer; font-size:13px; color:white;">
-                             <img src="${t.album.images[2].url}" style="width:20px; vertical-align:middle; margin-right:10px;">
-                             ${trackName} - ${artistName}
-                         </div>`;
-            });
-        }
-        document.getElementById('musicResults').innerHTML = html;
-    } catch (e) {
-        console.error("Error en búsqueda:", e);
-    }
-}
-
-function selectTrack(id, fullName) {
-    selectedTrackId = id;
-    document.getElementById('musicInp').value = fullName;
-    document.getElementById('musicResults').innerHTML = '';
-}
-
-// --- RESTO DE FUNCIONES (SIN CAMBIOS) ---
 function openCreator() { document.getElementById('creator').style.display = 'flex'; }
 function closeCreator() { document.getElementById('creator').style.display = 'none'; }
 
@@ -345,6 +349,8 @@ function renderAll() {
         container.appendChild(div);
     });
     const svgHeight = Math.max(1000, db.length * 250);
+    const path = document.querySelector('.svg-path path');
+    path.setAttribute('d', `M50,0 Q80,${svgHeight*0.1} 20,${svgHeight*0.2} T50,${svgHeight*0.4} T80,${svgHeight*0.6} T50,${svgHeight*0.8} T20,${svgHeight}`);
     document.getElementById('svgPath').setAttribute('viewBox', `0 0 100 ${svgHeight}`);
 }
 
@@ -355,7 +361,7 @@ function openRepo(id) {
     document.getElementById('repoImages').innerHTML = n.allImages.map(img => `<img src="${img}">`).join('');
     
     if(n.trackId) {
-        document.getElementById('repoSpotify').innerHTML = `<iframe src="https://open.spotify.com/embed/track/${n.trackId}" width="100%" height="80" frameBorder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
+        document.getElementById('repoSpotify').innerHTML = `<iframe src="https://open.spotify.com/embed/track/$${n.trackId}" width="100%" height="80" frameBorder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
     } else {
         document.getElementById('repoSpotify').innerHTML = '';
     }
@@ -379,6 +385,6 @@ function exportPDF() {
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     }).save();
 }
-    </script>
+</script>
 </body>
 </html>
