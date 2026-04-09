@@ -206,12 +206,14 @@ function loginSpotify() {
 
 async function searchSpotify() {
     const q = document.getElementById('musicInp').value;
+    const resultsDiv = document.getElementById('musicResults');
     
+    // Si no hay token, mostrar el botón de conexión
     if (!accessToken) {
-        if (q.length > 1) {
-            document.getElementById('musicResults').innerHTML = 
-                `<div onclick="loginSpotify()" style="padding:10px; color:#ff3366; cursor:pointer; font-weight:bold;">
-                    ⚠️ Haz clic aquí para conectar Spotify y buscar
+        if (q.length > 0) {
+            resultsDiv.innerHTML = 
+                `<div onclick="loginSpotify()" style="padding:15px; color:#fff; background:#ff3366; cursor:pointer; font-weight:bold; border-radius:10px; margin:10px 0; font-size:12px;">
+                    🎵 Haz clic aquí para conectar Spotify
                 </div>`;
         }
         return;
@@ -223,27 +225,31 @@ async function searchSpotify() {
         const res = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(q)}&type=track&limit=5`, {
             headers: { 'Authorization': 'Bearer ' + accessToken }
         });
-        const data = await res.json();
-        
-        // Si el token expiró (da error 401), re-loguear
-        if (data.error && data.error.status === 401) return loginSpotify();
 
+        // Si el token es inválido o caducó (Error 401), borramos el token y pedimos login
+        if (res.status === 401) {
+            accessToken = null;
+            return loginSpotify(); 
+        }
+
+        const data = await res.json();
         let html = '';
         if (data.tracks && data.tracks.items) {
             data.tracks.items.forEach(t => {
                 const trackName = t.name.replace(/'/g, "");
                 const artistName = t.artists[0].name.replace(/'/g, "");
                 html += `<div onclick="selectTrack('${t.id}', '${trackName} - ${artistName}')" 
-                             style="padding:10px; border-bottom:1px solid #333; cursor:pointer; font-size:13px; color:white;">
-                             <img src="${t.album.images[2].url}" style="width:20px; vertical-align:middle; margin-right:10px;">
+                             style="padding:10px; border-bottom:1px solid #333; cursor:pointer; font-size:13px; color:white; text-align:left;">
+                             <img src="${t.album.images[2].url}" style="width:25px; height:25px; vertical-align:middle; margin-right:10px; border-radius:3px;">
                              ${trackName} - ${artistName}
                          </div>`;
             });
         }
-        document.getElementById('musicResults').innerHTML = html;
-    } catch (e) { console.error(e); }
+        resultsDiv.innerHTML = html;
+    } catch (e) { 
+        console.error("Error en búsqueda:", e);
+    }
 }
-
 function selectTrack(id, fullName) {
     selectedTrackId = id;
     document.getElementById('musicInp').value = fullName;
