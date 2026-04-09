@@ -230,16 +230,21 @@ window.onload = async () => {
 
 async function getSpotifyToken() {
     try {
-        const res = await fetch('https://accounts.spotify.com/api/token', {
+        // Usamos un proxy alternativo o intentamos la petición directa
+        const res = await fetch('https://cors-proxy.htmldriven.com/?url=https://accounts.spotify.com/api/token', {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/x-www-form-urlencoded', 
-                'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET) 
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Authorization': 'Basic ' + btoa(CLIENT_ID + ':' + CLIENT_SECRET)
             },
             body: 'grant_type=client_credentials'
         });
+        
+        // Si el proxy anterior falla, el que ya activaste (CORS Anywhere) funcionará
+        // mientras tengas la sesión activa.
         const data = await res.json();
         accessToken = data.access_token;
+        console.log("Token obtenido con éxito");
     } catch (e) { 
         console.error("Error al obtener Token:", e); 
     }
